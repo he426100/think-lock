@@ -15,7 +15,7 @@ Lock类第一个参数是锁名，第二个是锁定时间（默认永久）
 示例二：
 ```php
 $mobile = input('param.mobile');
-$sms = new SmsLock($mobile);
+$sms = new Sms($mobile);
 if (!$sms->canSend()) {
     return $this->restResponse(10046);
 }
