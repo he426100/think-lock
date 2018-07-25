@@ -20,3 +20,9 @@ if (!$sms->canSend()) {
     return $this->restResponse(10046);
 }
 ```
+```php
+$sms = new Sms($params['username']);
+if (!$sms->verifyCode($params['captcha'])) {
+    return $this->restResponse('10010');
+}
+```
