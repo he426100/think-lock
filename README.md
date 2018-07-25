@@ -19,6 +19,10 @@ $sms = new Sms($mobile);
 if (!$sms->canSend()) {
     return $this->restResponse(10046);
 }
+if (($result = $sms->send()) === true) {
+    return $this->restResponse(['msg' => $sms->getResult()]);
+}
+return $this->restResponse($result == '2' ? 10046 : 10011);
 ```
 ```php
 $sms = new Sms($params['username']);
