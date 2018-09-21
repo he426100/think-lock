@@ -29,7 +29,7 @@ class Lock
      *
      * @param mixed $lockValue 如不传则默认为当前时间戳
      * @param integer $ttl 如不传则使用初始值
-     * @return boolean true表示锁定成功，false表示已锁
+     * @return boolean true表示锁定成功，false表示加锁失败
      */
     public function lock($lockValue = null, $ttl = null)
     {
@@ -43,6 +43,22 @@ class Lock
             $expire['ex'] = $ttl;
         }
         return $this->set($this->lockKey, $lockValue === null ? time() : $lockValue, $expire);
+    }
+
+    /**
+     * 不阻塞锁
+     * 这里指的是锁存在的情况下可以更新锁
+     *
+     * @param mixed $lockValue
+     * @param integer $ttl
+     * @return boolean true表示锁定成功，false表示加锁失败
+     */
+    public function unblockLock($lockValue = null, $ttl = null)
+    {
+        if ($ttl === null) {
+            $ttl = $this->initialTtl;
+        }
+        return Cache::set($this->lockKey, $lockValue === null ? time() : $lockValue, $ttl);
     }
 
     /**
