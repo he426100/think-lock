@@ -1,8 +1,9 @@
 <?php
+
 namespace org;
 
-use think\Cache;
-use think\Config;
+use think\facade\Cache;
+use think\facade\Config;
 
 /**
  * 以Cache为基础实现的锁
@@ -29,7 +30,7 @@ class Lock
      *
      * @param mixed $lockValue 如不传则默认为当前时间戳
      * @param integer $ttl 如不传则使用初始值
-     * @return boolean true表示锁定成功，false表示加锁失败
+     * @return boolean true表示锁定成功，false表示已锁
      */
     public function lock($lockValue = null, $ttl = null)
     {
@@ -97,12 +98,12 @@ class Lock
      */
     public function release()
     {
-        return Cache::rm($this->lockKey);
+        return Cache::delete($this->lockKey);
     }
 
     /**
      * 设置Cache值，代替think\Cache::set
-     * 
+     *
      * @param string  $name 缓存变量名
      * @param mixed   $value  存储数据
      * @param array $expire  有效时间（秒）  Array('nx', 'ex'=>10)
@@ -110,10 +111,10 @@ class Lock
      */
     protected function set($name, $value, $expire = ['nx'])
     {
-        $cache = Cache::init();
-        $options = Config::get('cache');
-        $key   = $options['prefix'] . $name;;
-        $value = is_scalar($value) ? $value : 'think_serialize:' . serialize($value);
-        return $cache->handler()->set($key, $value, $expire);
+        $redis = get_redis();
+        $options = Config::get('cache.stores.redis');
+        $key   = $options['prefix'] . $name;
+        $value = is_numeric($value) ? $value : serialize($value);
+        return $redis->set($key, $value, $expire);
     }
 }

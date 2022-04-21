@@ -1,9 +1,10 @@
 <?php
+
 namespace org;
 
-use org\SmsApi;
 use org\Lock;
-use org\Random;
+use org\SmsTool;
+use think\helper\Str;
 
 /**
  * 验证码锁
@@ -13,20 +14,22 @@ class Sms
     private $mobile;
     private $lock;
     private $ipLock;
-    private $result;
     private $ip;
+    private $scene = 'reg';
+    private $key = 'ZvzO!39NC3ME';
 
     /**
      * 验证码锁
      *
+     * @param string $mobile
      * @param integer $ttl
      */
-    public function __construct($mobile, $ttl = 120)
+    public function __construct(string $mobile, int $ttl = 120)
     {
         $this->ip = request()->ip(0, true);
         $this->mobile = $mobile;
-        $this->lock = new Lock('verify_code_'.$mobile,$ttl);
-        $this->ipLock = new Lock('sms_ip_'.$this->ip, 86400);
+        $this->lock = new Lock('verify_code_' . $mobile, $ttl);
+        $this->ipLock = new Lock('sms_ip_' . $this->ip, 86400);
     }
 
     /**
@@ -34,7 +37,7 @@ class Sms
      *
      * @return boolean
      */
-    public function canSend()
+    public function canSend(): bool
     {
         if ($this->lock->isLocked()) {
             return false;
@@ -43,41 +46,42 @@ class Sms
             $this->ipLock->lock(0);
         }
         if ($this->ipLock->inc() > 100) {
-            trace($this->ip.'频繁发送短信');
+            trace($this->ip . '频繁发送短信');
             return false;
         }
         return true;
     }
 
     /**
-     * 发送验证码
+     * 设置短信场景
      *
-     * @param string $code
-     * @return boolean|string 返回true表示发送成功，其他表示错误原因
+     * @param string $scene
+     * @return Sms
      */
-    public function send($code = null)
+    public function scene(string $scene): Sms
     {
-        if ($code === null) {
-            $code = $this->getCode();
-        }
-        $sms = new SmsApi();
-        $this->result = $sms->sendSms($this->mobile, '您的验证码为：'.$code);
-        if ($this->result === '1') {
-            //记住验证码与返回
-            $this->setCode($code);
-            return true;
-        }
-        return $this->result;
+        $this->scene = $scene;
+        return $this;
     }
 
     /**
-     * 短信发送结果
+     * 发送验证码
      *
-     * @return string
+     * @param string $code
+     * @return boolean 返回true表示发送成功
      */
-    public function getResult()
+    public function send(string $code = ''): bool
     {
-        return $this->result === '1' ? '验证码发送成功，请注意查收' : $this->result;
+        if (empty($code)) {
+            $code = $this->getCode();
+        }
+        $tool = new SmsTool();
+        $result = $tool->send($this->mobile, $this->getSmsContent($code));
+        if ($result === true) {
+            //记住验证码与返回
+            $this->setCode($code);
+        }
+        return $result;
     }
 
     /**
@@ -88,7 +92,7 @@ class Sms
      */
     public function getCode($length = 4)
     {
-        return Random::numeric($length);
+        return Str::random($length, 1);
     }
 
     /**
@@ -99,22 +103,33 @@ class Sms
      */
     public function setCode($code)
     {
-        $this->lock->lock(my_md5($code));
+        $this->lock->lock(md5($this->key . $code));
     }
 
     /**
      * 校验验证码
      *
      * @param string $code
-     * @return void
+     * @return boolean
      */
-    public function verifyCode($captcha)
+    public function verifyCode($captcha): bool
     {
         $code = $this->lock->getLockValue();
-        if ($code != my_md5($captcha)) {
+        if ($code != md5($this->key . $captcha)) {
             return false;
         }
         $this->lock->release();
         return true;
+    }
+
+    /**
+     * 获取短信内容
+     *
+     * @param string $code
+     * @return string
+     */
+    private function getSmsContent(string $code): string
+    {
+        return $code;
     }
 }
